@@ -27,6 +27,7 @@ Shader "Custom/My First Shader"{
             // 最上面定义了属性之后 我们还需要访问属性
             float4 _Tint;
             sampler2D _MainTex;
+            float4 _MainTex_ST; //ST表示缩放和平移
 
             struct Interpolators {
                 // 四个浮点数的集合 用来弄矩阵的 SV_POSITION是语义 SV表示系统值 POSITION表示最终顶点位置 告诉图形处理器 我们尝试输出顶点的位置
@@ -46,7 +47,9 @@ Shader "Custom/My First Shader"{
                 // 会被Unity升级为UnityObjectToClipPos
                 Interpolators i;
                 i.position = UnityObjectToClipPos(v.position);
-                i.uv = v.uv;
+                // i.uv = v.uv * _MainTex_ST.xy + _MainTex_ST.zw;
+                // 这个方法就是用来缩放和平移uv的
+                i.uv = TRANSFORM_TEX(v.uv, _MainTex);
                 return i;
             }
 
