@@ -1,6 +1,4 @@
-﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
-
-Shader "Custom/My First Shader"{
+﻿Shader "Custom/My First Shader"{
     // 子着色器
     SubShader {
         // 通道
@@ -20,7 +18,8 @@ Shader "Custom/My First Shader"{
             float4 MyVertexProgram(float4 position : POSITION) : SV_POSITION {
                 // mul 乘法指令
                 // UNITY_MATRIX_MVP是UnityCG里面的UnityShaderVariables 专门用来将顶点正确的投影到显示器上去的
-                return UnityObjectToClipPos(position);
+                // 会被Unity升级为UnityObjectToClipPos
+                return mul(UNITY_MATRIX_MVP, position);
             }
 
             // 这个主要用来输出一个RGBA颜色值 默认着色器目标 也就是帧缓冲区 包含我们正在生成的图像
