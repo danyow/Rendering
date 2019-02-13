@@ -5,6 +5,7 @@ Shader "Custom/My First Lighting Shader"{
     Properties {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
         _MainTex ("Albedo", 2D) = "white" {}
+        _SpecularTint("Specular", Color) = (0.5, 0.5, 0.5)
         // 平滑度
         _Smoothness ("Smoothness", Range(0, 1)) = 0.5
     }
@@ -33,6 +34,7 @@ Shader "Custom/My First Lighting Shader"{
             float4 _Tint;
             sampler2D _MainTex;
             float4 _MainTex_ST; //ST表示缩放和平移
+            float4 _SpecularTint;
             float _Smoothness;
 
             struct Interpolators {
@@ -90,11 +92,11 @@ Shader "Custom/My First Lighting Shader"{
                 // float3 reflectionDir = reflect(-lightDir, i.normal);
                 // 入射光和视角的半矢量
                 float3 halfVector = normalize(lightDir + viewDir);
-                // return float4(reflectionDir * 0.5 + 0.5, 1);
-                return pow(
+                float3 specular = _SpecularTint.rgb * lightColor * pow(
                     DotClamped(halfVector, i.normal),
                     _Smoothness * 100
                 );
+                return float4(specular, 1);
             }
 
             ENDCG
