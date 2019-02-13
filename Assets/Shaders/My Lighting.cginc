@@ -32,6 +32,10 @@ struct Interpolators {
     float3 normal : TEXCOORD1;
     // 世界坐标 用来表示观察者方向
     float3 worldPos : TEXCOORD2;
+    // 顶点光源
+    #if defined(VERTEXLIGHT_ON)
+        float3 vertexLightColor : TEXCOORD3;
+    #endif
 };
 
 struct VertexData {
@@ -40,6 +44,27 @@ struct VertexData {
     float3 normal : NORMAL;
     float2 uv : TEXCOORD0;
 };
+
+// inout是从内插值器里面读取和写入结果
+void ComputeVertexLightColor(inout Interpolators i) {
+    #if defined(VERTEXLIGHT_ON)
+        // 4光源位置unity_4LightPosX0
+        // float3 lightPos = float3(
+        //     unity_4LightPosX0.x, unity_4LightPosY0.x, unity_4LightPosZ0.x
+        // );
+        // float3 lightVec = lightPos - i.worldPos;
+        // float3 lightDir = normalize(lightVec);
+        // float ndotl = DotClamped(i.normal, lightDir);
+        // float attenuation = 1 / (1 + dot(lightVec, lightVec) * unity_4LightAtten0.x);
+        // i.vertexLightColor = unity_LightColor[0].rgb * ndotl * attenuation;
+        i.vertexLightColor = Shade4PointLights(
+            unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0,
+            unity_LightColor[0].rgb, unity_LightColor[1].rgb, 
+            unity_LightColor[2].rgb, unity_LightColor[3].rgb, 
+            unity_4LightAtten0, i.worldPos, i.normal
+        );
+    #endif
+}
 
 Interpolators MyVertexProgram(VertexData v) {
     Interpolators i;
@@ -56,6 +81,7 @@ Interpolators MyVertexProgram(VertexData v) {
     // i.normal = mul(transpose((float3x3)unity_ObjectToWorld), v.normal);
     i.normal = UnityObjectToWorldNormal(v.normal);
     i.normal = normalize(i.normal);
+    ComputeVertexLightColor(i);
     return i;
 }
 
@@ -73,6 +99,17 @@ UnityLight CreateLight(Interpolators i) {
     light.color = _LightColor0.rgb * attenuation;
     light.ndotl = DotClamped(i.normal, light.dir);
     return light;
+}
+
+// 间接光原函数
+UnityIndirect CreateIndirectLight (Interpolators i) {
+    UnityIndirect indirectLight;
+    indirectLight.diffuse = 0;
+    indirectLight.specular = 0;
+    #if defined(VERTEXLIGHT_ON)
+        indirectLight.diffuse = i.vertexLightColor;
+    #endif
+    return indirectLight;
 }
 
 // 这个主要用来输出一个RGBA颜色值 默认着色器目标 也就是帧缓冲区 包含我们正在生成的图像
@@ -119,14 +156,14 @@ float4 MyFragmentProgram(Interpolators i) : SV_TARGET {
     // light.dir = lightDir;
     // light.ndotl = DotClamped(i.normal, lightDir);
     // 间接光
-    UnityIndirect indirectLight;
-    indirectLight.diffuse = 0;
-    indirectLight.specular = 0;
+    // UnityIndirect indirectLight;
+    // indirectLight.diffuse = 0;
+    // indirectLight.specular = 0;
 
     return UNITY_BRDF_PBS(
         albedo, specularTint,
         oneMinusReflectivity, _Smoothness,
         i.normal, viewDir,
-        CreateLight(i), indirectLight
+        CreateLight(i), CreateIndirectLight(i)
     );
 }
