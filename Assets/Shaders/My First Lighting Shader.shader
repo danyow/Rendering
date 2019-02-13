@@ -40,9 +40,37 @@ Shader "Custom/My First Lighting Shader"{
             // #include "UnityStandardBRDF.cginc"
             // 负责能量守恒
             // #include "UnityStandardUtils.cginc"
-            // PBS 物理规则渲染
-            #include "UnityPBSLighting.cginc"
+            // 避免重定义错误
+            // #if !defined(MY_LIGHTING_INCLUDED)
+            // #define MY_LIGHTING_INCLUDED
+            // // PBS 物理规则渲染
+            // #include "UnityPBSLighting.cginc"
             #include "My Lighting.cginc"
+            // #endif
+
+            ENDCG
+        }
+        Pass {
+            Tags {
+                "LightMode" = "ForwardAdd"
+            }
+
+            // 确保混合模式为添加模式 不然的话第一个光源会被覆盖
+            Blend One One
+            // 会重新计算深度缓冲区
+            ZWrite Off
+
+            CGPROGRAM
+
+            #pragma target 3.0
+            
+            #pragma vertex MyVertexProgram
+            #pragma fragment MyFragmentProgram
+
+            #define POINT
+
+            #include "My Lighting.cginc"
+
             ENDCG
         }
     }   

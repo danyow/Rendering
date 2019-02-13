@@ -1,3 +1,20 @@
+// 导入代码片段
+// #include "UnityCG.cginc"
+// 光照相关的功能
+// #include "UnityStandardBRDF.cginc"
+// 负责能量守恒
+// #include "UnityStandardUtils.cginc"
+//光照技术
+#include "AutoLight.cginc"
+// 避免重定义错误
+// #if !defined(MY_LIGHTING_INCLUDED)
+// #define MY_LIGHTING_INCLUDED
+// // PBS 物理规则渲染
+#include "UnityPBSLighting.cginc"
+// #endif
+
+
+
 // 最上面定义了属性之后 我们还需要访问属性
 float4 _Tint;
 sampler2D _MainTex;
@@ -42,6 +59,18 @@ Interpolators MyVertexProgram(VertexData v) {
     return i;
 }
 
+// 光源函数
+UnityLight CreateLight(Interpolators i) {
+    UnityLight light;
+    light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos);
+    // float3 lightVec = _WorldSpaceLightPos0.xyz - i.worldPos;
+    // float attenuation = 1 / ( 1 + dot(lightVec, lightVec));
+    UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos);
+    light.color = _LightColor0.rgb * attenuation;
+    light.ndotl = DotClamped(i.normal, light.dir);
+    return light;
+}
+
 // 这个主要用来输出一个RGBA颜色值 默认着色器目标 也就是帧缓冲区 包含我们正在生成的图像
 // 需要接收输入 输入就是顶点程序产生的值
 float4 MyFragmentProgram(Interpolators i) : SV_TARGET {
@@ -51,10 +80,10 @@ float4 MyFragmentProgram(Interpolators i) : SV_TARGET {
     // return float4(i.normal * 0.5 + 0.5, 1);
     // 加入垂直光源
     // 不能有负光 所以加入max
-    float3 lightDir      = _WorldSpaceLightPos0.xyz;
+    // float3 lightDir      = _WorldSpaceLightPos0.xyz;
     // 视角方向
     float3 viewDir       = normalize(_WorldSpaceCameraPos - i.worldPos);
-    float3 lightColor    = _LightColor0.rgb;
+    // float3 lightColor    = _LightColor0.rgb;
     // 反照率
     float3 albedo        = tex2D(_MainTex, i.uv).rgb * _Tint.rgb;
     // albedo *= 1 - max(_SpecularTint.r, max(_SpecularTint.g, _SpecularTint.b));
@@ -81,10 +110,10 @@ float4 MyFragmentProgram(Interpolators i) : SV_TARGET {
     // return float4(diffuse + specular, 1);
 
     // 直接光
-    UnityLight light;
-    light.color = lightColor;
-    light.dir = lightDir;
-    light.ndotl = DotClamped(i.normal, lightDir);
+    // UnityLight light;
+    // light.color = lightColor;
+    // light.dir = lightDir;
+    // light.ndotl = DotClamped(i.normal, lightDir);
     // 间接光
     UnityIndirect indirectLight;
     indirectLight.diffuse = 0;
@@ -94,6 +123,6 @@ float4 MyFragmentProgram(Interpolators i) : SV_TARGET {
         albedo, specularTint,
         oneMinusReflectivity, _Smoothness,
         i.normal, viewDir,
-        light, indirectLight
+        CreateLight(i), indirectLight
     );
 }
