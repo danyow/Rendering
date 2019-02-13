@@ -109,6 +109,9 @@ UnityIndirect CreateIndirectLight (Interpolators i) {
     #if defined(VERTEXLIGHT_ON)
         indirectLight.diffuse = i.vertexLightColor;
     #endif
+    #if defined(FORWARD_BASE_PASS)
+        indirectLight.diffuse += max(0, ShadeSH9(float4(i.normal, 1)));
+    #endif
     return indirectLight;
 }
 
@@ -159,6 +162,9 @@ float4 MyFragmentProgram(Interpolators i) : SV_TARGET {
     // UnityIndirect indirectLight;
     // indirectLight.diffuse = 0;
     // indirectLight.specular = 0;
+
+    // float3 shColor = ShadeSH9(float4(i.normal, 1));
+    // return float4(shColor, 1);
 
     return UNITY_BRDF_PBS(
         albedo, specularTint,
