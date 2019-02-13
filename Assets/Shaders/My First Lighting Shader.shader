@@ -30,6 +30,9 @@ Shader "Custom/My First Lighting Shader"{
             // #include "UnityCG.cginc"
             // 光照相关的功能
             #include "UnityStandardBRDF.cginc"
+            // 负责能量守恒
+            #include "UnityStandardUtils.cginc"
+
             // 最上面定义了属性之后 我们还需要访问属性
             float4 _Tint;
             sampler2D _MainTex;
@@ -86,7 +89,14 @@ Shader "Custom/My First Lighting Shader"{
                 // 视角方向
                 float3 viewDir       = normalize(_WorldSpaceCameraPos - i.worldPos);
                 float3 lightColor    = _LightColor0.rgb;
+                // 反照率
                 float3 albedo        = tex2D(_MainTex, i.uv).rgb * _Tint.rgb;
+                // albedo *= 1 - max(_SpecularTint.r, max(_SpecularTint.g, _SpecularTint.b));
+                float oneMinusReflectivity;
+                albedo = EnergyConservationBetweenDiffuseAndSpecular(
+                    albedo, _SpecularTint.rgb, oneMinusReflectivity
+                );
+
                 float3 diffuse       = albedo * lightColor * DotClamped(lightDir, i.normal);
                 // 反射光方向
                 // float3 reflectionDir = reflect(-lightDir, i.normal);
@@ -96,7 +106,7 @@ Shader "Custom/My First Lighting Shader"{
                     DotClamped(halfVector, i.normal),
                     _Smoothness * 100
                 );
-                return float4(specular, 1);
+                return float4(diffuse + specular, 1);
             }
 
             ENDCG
