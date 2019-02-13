@@ -62,7 +62,11 @@ Interpolators MyVertexProgram(VertexData v) {
 // 光源函数
 UnityLight CreateLight(Interpolators i) {
     UnityLight light;
-    light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos);
+    #if defined(POINT)
+        light.dir = normalize(_WorldSpaceLightPos0.xyz - i.worldPos);
+    #else
+        light.dir = _WorldSpaceLightPos0.xyz;
+    #endif
     // float3 lightVec = _WorldSpaceLightPos0.xyz - i.worldPos;
     // float attenuation = 1 / ( 1 + dot(lightVec, lightVec));
     UNITY_LIGHT_ATTENUATION(attenuation, 0, i.worldPos);

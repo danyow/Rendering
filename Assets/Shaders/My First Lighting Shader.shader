@@ -63,11 +63,13 @@ Shader "Custom/My First Lighting Shader"{
             CGPROGRAM
 
             #pragma target 3.0
-            
+
+            #pragma multi_compile DIRECTIONAL POINT
+
             #pragma vertex MyVertexProgram
             #pragma fragment MyFragmentProgram
 
-            #define POINT
+            // #define POINT
 
             #include "My Lighting.cginc"
 
