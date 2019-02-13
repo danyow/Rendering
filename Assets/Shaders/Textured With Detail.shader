@@ -1,7 +1,5 @@
 ﻿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
 
-// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
-
 Shader "Custom/Textured With Detail"{
     // Shader的属性
     Properties {
@@ -60,7 +58,8 @@ Shader "Custom/Textured With Detail"{
             // 需要接收输入 输入就是顶点程序产生的值
             float4 MyFragmentProgram(Interpolators i) : SV_TARGET {
                 float4 color = tex2D(_MainTex, i.uv) * _Tint;
-                color *= tex2D(_MainTex, i.uv * 10) * 2;
+                // unity_ColorSpaceDouble 是因为他在线性模式下渲染的时候会变暗 然后我们对其进行Gamma校正
+                color *= tex2D(_DetailTex, i.uvDetail) * unity_ColorSpaceDouble;
                 return color;
             }
 
