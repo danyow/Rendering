@@ -5,7 +5,12 @@ Shader "Custom/My First Lighting Shader"{
     Properties {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
         _MainTex ("Albedo", 2D) = "white" {}
-        _SpecularTint("Specular", Color) = (0.5, 0.5, 0.5)
+        // 镜面反射率
+        // _SpecularTint("Specular", Color) = (0.5, 0.5, 0.5)
+
+        // 金属
+        // Gamma 需要伽马校正
+        [Gamma] _Metallic("Metallic", Range(0, 1)) = 0
         // 平滑度
         _Smoothness ("Smoothness", Range(0, 1)) = 0.5
     }
@@ -20,6 +25,9 @@ Shader "Custom/My First Lighting Shader"{
 
             // 调用CG程序
             CGPROGRAM
+
+            // 确保着色器级别高于3.0
+            #pragma target 3.0
             
             // 使用我的顶点程序
             #pragma vertex MyVertexProgram
@@ -29,15 +37,18 @@ Shader "Custom/My First Lighting Shader"{
             // 导入代码片段
             // #include "UnityCG.cginc"
             // 光照相关的功能
-            #include "UnityStandardBRDF.cginc"
+            // #include "UnityStandardBRDF.cginc"
             // 负责能量守恒
-            #include "UnityStandardUtils.cginc"
+            // #include "UnityStandardUtils.cginc"
+            // PBS 物理规则渲染
+            #include "UnityPBSLighting.cginc"
 
             // 最上面定义了属性之后 我们还需要访问属性
             float4 _Tint;
             sampler2D _MainTex;
             float4 _MainTex_ST; //ST表示缩放和平移
             float4 _SpecularTint;
+            float _Metallic;
             float _Smoothness;
 
             struct Interpolators {
@@ -92,21 +103,44 @@ Shader "Custom/My First Lighting Shader"{
                 // 反照率
                 float3 albedo        = tex2D(_MainTex, i.uv).rgb * _Tint.rgb;
                 // albedo *= 1 - max(_SpecularTint.r, max(_SpecularTint.g, _SpecularTint.b));
-                float oneMinusReflectivity;
-                albedo = EnergyConservationBetweenDiffuseAndSpecular(
-                    albedo, _SpecularTint.rgb, oneMinusReflectivity
+                float3 specularTint; // = albedo * _Metallic;
+                // 1 减去反射率
+                float oneMinusReflectivity; // = 1 - _Metallic;
+                // albedo = EnergyConservationBetweenDiffuseAndSpecular(
+                //     albedo, _SpecularTint.rgb, oneMinusReflectivity
+                // );
+                // albedo *= oneMinusReflectivity;
+                albedo = DiffuseAndSpecularFromMetallic(
+                    albedo, _Metallic, specularTint, oneMinusReflectivity
                 );
+    
+                // float3 diffuse       = albedo * lightColor * DotClamped(lightDir, i.normal);
+                // // 反射光方向
+                // // float3 reflectionDir = reflect(-lightDir, i.normal);
+                // // 入射光和视角的半矢量
+                // float3 halfVector = normalize(lightDir + viewDir);
+                // float3 specular = specularTint * lightColor * pow(
+                //     DotClamped(halfVector, i.normal),
+                //     _Smoothness * 100
+                // );
+                // return float4(diffuse + specular, 1);
 
-                float3 diffuse       = albedo * lightColor * DotClamped(lightDir, i.normal);
-                // 反射光方向
-                // float3 reflectionDir = reflect(-lightDir, i.normal);
-                // 入射光和视角的半矢量
-                float3 halfVector = normalize(lightDir + viewDir);
-                float3 specular = _SpecularTint.rgb * lightColor * pow(
-                    DotClamped(halfVector, i.normal),
-                    _Smoothness * 100
+                // 直接光
+                UnityLight light;
+                light.color = lightColor;
+                light.dir = lightDir;
+                light.ndotl = DotClamped(i.normal, lightDir);
+                // 间接光
+                UnityIndirect indirectLight;
+                indirectLight.diffuse = 0;
+                indirectLight.specular = 0;
+
+                return UNITY_BRDF_PBS(
+                    albedo, specularTint,
+                    oneMinusReflectivity, _Smoothness,
+                    i.normal, viewDir,
+                    light, indirectLight
                 );
-                return float4(diffuse + specular, 1);
             }
 
             ENDCG
